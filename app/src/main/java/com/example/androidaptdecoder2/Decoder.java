@@ -81,6 +81,8 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
             double[] modulatedSamples = readAudioFile(resampledFile.getName());
             out.println("Done");
 
+            resampledFile.delete();
+
             //demodulate the samples
             publishProgress("demodulating");
             out.println("Demodulating the audio samples...");
