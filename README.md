@@ -1,7 +1,4 @@
 # Android APT Decoder V2 (Work In Progress)
-An APT Decoder that allows you to decoder weather satellites on your phone
-
-## About
 The is my second "attempt" at a APT decoder for android devices.
 
 ## Installing
@@ -16,6 +13,6 @@ You can find the compressed apk file in [/app/release/](https://github.com/Blobt
   - Animate loading bar
 
 ## Screenshots
-![](https://github.com/Blobtoe/Android-APT-Decoder-V2/blob/master/Screenshots/Screenshot_20201018-123932.jpg)
-![](https://github.com/Blobtoe/Android-APT-Decoder-V2/blob/master/Screenshots/Screenshot_20201018-124000.jpg)
+![](https://raw.githubusercontent.com/Blobtoe/Android-APT-Decoder-V2/main/Screenshots/Screenshot_20201018-123932.jpg)
+![](https://raw.githubusercontent.com/Blobtoe/Android-APT-Decoder-V2/main/Screenshots/Screenshot_20201018-124000.jpg)
 
