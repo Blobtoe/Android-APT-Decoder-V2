@@ -9,7 +9,7 @@ You can find the compressed apk file in [/app/release/](https://github.com/Blobt
   - ~Allow zoom on images~
   - Add settings
   - Add error messages
-  - fix decoder problems (black line at bottom, very high or very low contrast)
+  - ~fix decoder problems (black line at bottom, very high or very low contrast)~
   - Animate loading bar
 
 ## Screenshots

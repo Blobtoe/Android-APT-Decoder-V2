@@ -64,7 +64,6 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
 
         //use ffmpeg to resample audio to 20800 and convert to mono audio.
         publishProgress("resampling");
-        out.println("Resampling audio to 20080/s and converting audio to mono...");
         long id = FFmpeg.execute("-y -i " + inputFile.toString() + " -ar 20800 -ac 1 " + resampledFile.toString());
 
         double startTime = System.currentTimeMillis() / 1000;
@@ -73,52 +72,41 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
         }
 
         try {
-            out.println("Done");
-
             //read the new resampled audio file
             publishProgress("reading audio file");
-            out.println("Reading resampled audio file...");
             double[] modulatedSamples = readAudioFile(resampledFile.getName());
-            out.println("Done");
 
             resampledFile.delete();
 
             //demodulate the samples
             publishProgress("demodulating");
-            out.println("Demodulating the audio samples...");
             double[] demodulatedSamples = demodulate(modulatedSamples);
-            out.println("Done");
 
             //split the demodulated samples into smaller chunks as one big array throws an OutOfMemoryError
             int splitSize = 1000000;
             publishProgress("splitting audio into chunks");
-            out.println("Spliting audio into chunks of " + splitSize + "...");
             ArrayList<double[]> splitSamples = split(demodulatedSamples, splitSize);
-            out.println("Done");
 
             //decimate the demodulated samples by a factor of 5 to bring the sample rate down to 4160
-            //these samples can be stored in one bug array as it should be 5 times smaller than the demodulated samples
+            //these samples can be stored in one big array as it should be 5 times smaller than the demodulated samples
             publishProgress("decimating audio");
-            out.println("Decimating audio samples...");
             double[] decimatedSamples = new double[0];
             for (int i = 0; i < splitSamples.size(); i++) {
                 decimatedSamples  = concatenate(decimatedSamples, decimate(splitSamples.get(i), 20800, 5));
             }
-            out.println("Done");
-
-            //gets the highest value in the array
-            //double max = Arrays.stream(decimatedSamples).max().getAsDouble();
 
             publishProgress("syncing");
-            out.println("Syncing samples...");
             double[][] lines = sync(decimatedSamples);
-            out.println("Done");
 
+            //get biggest and smallest value in the array.
             double max = 0;
+            double min = 0;
             for (double[] line : lines) {
-                max += Arrays.stream(Arrays.copyOfRange(line, 0, 16)).max().getAsDouble();
+                max += Arrays.stream(line).max().getAsDouble();
+                min += Arrays.stream(line).min().getAsDouble();
             }
             max = max / lines.length;
+            min = min / lines.length;
 
             //convert the samples into 3 bitmaps, then stitch them together
             //cannot convert entire array in one go, as it throws an OutOfMemoryError
@@ -130,11 +118,11 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
                 int[] pixels = new int[(lines.length / bitmapSplitNum) * 2080];
                 //for every line in this part of the samples array
                 for (int j = 0; j < lines.length / bitmapSplitNum; j++) {
-                    double[] line = lines[(lines.length / bitmapSplitNum) * i + j];
+                    double[] line = lines[((lines.length / bitmapSplitNum) * i) + j];
                     //for every sample in the line
                     for (int x = 0; x < line.length; x++) {
                         //remap the sample to a pixel brightness value
-                        double mappedSample = remap(line[x], 0, max, 0, 255);
+                        double mappedSample = remap(line[x], min, max, 0, 255);
                         pixels[line.length * j + x] = Color.rgb((int)mappedSample, (int)mappedSample, (int)mappedSample);
                     }
                 }
@@ -146,16 +134,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
                     bitmap = combineImages(bitmap, Bitmap.createBitmap(pixels, 2080, pixels.length / 2080, Bitmap.Config.ARGB_8888));
                 }
             }
-
-            //save the bitmap as an image
-            String outFile = "Output-1.jpg";
             publishProgress("done");
-            out.println("Saving image as: " + outFile + "...");
-            String outfile = Environment.getExternalStorageDirectory().toString() + "/image.jpg";
-            out.println(outfile);
-            //saveImage(bitmap, outfile);
-
-            out.println("Done");
 
 
         } catch (IOException | NullPointerException | IllegalArgumentException e) {
@@ -199,23 +178,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
         }
     }
 
-    //saves a bitmap to a jpeg
-    private static void saveImage(Bitmap finalBitmap, String fname) {
-        File file = new File(fname);
-        //overwrite file if it already exists
-        if (file.exists()) file.delete();
-        Log.i("LOAD", fname);
-        try {
-            FileOutputStream out = new FileOutputStream(file);
-            finalBitmap.compress(Bitmap.CompressFormat.JPEG, 90, out);
-            out.flush();
-            out.close();
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    //decimates an array of samples with the specified sample rate by a factor of {decimationFactor}
+    //decimates an array of samples with the specified sample rate by a factor of decimationFactor
     public static double[] decimate(double[] samples, int sampleRate, int decimationFactor) {
         Decimate decimator = new Decimate(samples, sampleRate);
         samples = decimator.decimate(decimationFactor);
@@ -230,9 +193,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
         return  result;
     }
 
-    //NOT IN USE
-    //work in progress
-    //should return a 2d array of the each line starting at the sync frame
+    //returns a 2d array of the each line starting at the sync frame
     public static double[][] sync(double[] samples) {
         //Cross correlate the demodulated samples with a template of a sync frame (1040 hz square wave)
         Generate generate = new Generate(0, 1, 4160);
@@ -246,9 +207,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
         ArrayList<double[]> peaks = new ArrayList<>();
         peaks.add(new double[] {0, 0});
         int minDistance = 2000;
-        double max = 0;
 
-        out.println("starting");
         for (int i = 0; i < samples.length; i++) {
             CrossCorrelation crossCorrelation = new CrossCorrelation(Arrays.copyOfRange(samples, i, i + syncA.length), syncA);
             double correlation = crossCorrelation.crossCorrelate()[0];
@@ -260,29 +219,25 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
             }
         }
 
-        max = max / peaks.size();
 
         double[][] lines = new double[peaks.size()][2080];
         for (int i = 0; i < peaks.size(); i++ ) {
             lines[i] = Arrays.copyOfRange(samples, (int)peaks.get(i)[0], (int)peaks.get(i)[0] + 2080);
         }
 
-        for (double[] peak : peaks) {
-            out.print(Arrays.toString(peak));
-        }
-
         return lines;
     }
 
-    //splits an array into parts of {splitSize} length
+    //splits an array into parts with a length of splitSize
     public static ArrayList<double[]> split(double[] samples, int splitSize) {
         ArrayList<double[]> splitSamples = new ArrayList<>();
         int overflow = samples.length % splitSize;
-        for (int i = 0; i < samples.length; i += splitSize) {
+        for (int i = splitSize; i < samples.length - overflow; i += splitSize) {
             double[] split = Arrays.copyOfRange(samples, i, i + splitSize);
             splitSamples.add(split);
         }
         splitSamples.add(Arrays.copyOfRange(samples, samples.length - overflow, samples.length));
+
         return  splitSamples;
     }
 
