@@ -2,4 +2,5 @@
 <resources>
     <color name="primary">@color/colorPrimary</color>
     <color name="accent">@color/colorAccent</color>
+    <color name="background">#D5D5D5</color>
 </resources>

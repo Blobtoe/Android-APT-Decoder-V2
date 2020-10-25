@@ -10,7 +10,7 @@ You can find the compressed apk file in [/app/release/](https://github.com/Blobt
   - Add settings
   - Add error messages
   - ~fix decoder problems (black line at bottom, very high or very low contrast)~
-  - Animate loading bar
+  - ~Animate loading bar~
 
 ## Screenshots
 ![](https://raw.githubusercontent.com/Blobtoe/Android-APT-Decoder-V2/main/Screenshots/Screenshot_20201018-123932.jpg)

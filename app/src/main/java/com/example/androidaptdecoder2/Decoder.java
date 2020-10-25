@@ -14,6 +14,7 @@ import android.widget.Toast;
 
 import com.arthenica.mobileffmpeg.ExecuteCallback;
 import com.arthenica.mobileffmpeg.FFmpeg;
+import com.example.androidaptdecoder2.fragments.DecodingFragment;
 import com.github.psambit9791.jdsp.signal.CrossCorrelation;
 import com.github.psambit9791.jdsp.signal.Decimate;
 import com.github.psambit9791.jdsp.signal.Generate;
@@ -49,8 +50,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
     protected void onProgressUpdate(String... values) {
         super.onProgressUpdate(values);
 
-        MainActivity.progressTextView.setText(values[0]);
-        MainActivity.decoderProgressBar.setProgress(100);
+        DecodingFragment.update(values[0], new Integer(values[1]));
     }
 
     @Override
@@ -63,7 +63,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
         Bitmap bitmap = null;
 
         //use ffmpeg to resample audio to 20800 and convert to mono audio.
-        publishProgress("resampling");
+        publishProgress("resampling", "0");
         long id = FFmpeg.execute("-y -i " + inputFile.toString() + " -ar 20800 -ac 1 " + resampledFile.toString());
 
         double startTime = System.currentTimeMillis() / 1000;
@@ -73,29 +73,29 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
 
         try {
             //read the new resampled audio file
-            publishProgress("reading audio file");
+            publishProgress("reading audio file", "15");
             double[] modulatedSamples = readAudioFile(resampledFile.getName());
 
             resampledFile.delete();
 
             //demodulate the samples
-            publishProgress("demodulating");
+            publishProgress("demodulating", "30");
             double[] demodulatedSamples = demodulate(modulatedSamples);
 
             //split the demodulated samples into smaller chunks as one big array throws an OutOfMemoryError
             int splitSize = 1000000;
-            publishProgress("splitting audio into chunks");
+            publishProgress("splitting audio into chunks", "45");
             ArrayList<double[]> splitSamples = split(demodulatedSamples, splitSize);
 
             //decimate the demodulated samples by a factor of 5 to bring the sample rate down to 4160
             //these samples can be stored in one big array as it should be 5 times smaller than the demodulated samples
-            publishProgress("decimating audio");
+            publishProgress("decimating audio", "60");
             double[] decimatedSamples = new double[0];
             for (int i = 0; i < splitSamples.size(); i++) {
                 decimatedSamples  = concatenate(decimatedSamples, decimate(splitSamples.get(i), 20800, 5));
             }
 
-            publishProgress("syncing");
+            publishProgress("syncing", "75");
             double[][] lines = sync(decimatedSamples);
 
             //get biggest and smallest value in the array.
@@ -113,7 +113,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
             int bitmapSplitNum = 3;
             //Bitmap bitmap = null;
 
-            publishProgress("assembling image");
+            publishProgress("assembling image", "90");
             for (int i = 0; i < bitmapSplitNum; i++) {
                 int[] pixels = new int[(lines.length / bitmapSplitNum) * 2080];
                 //for every line in this part of the samples array
@@ -134,7 +134,7 @@ public class Decoder extends AsyncTask<File, String, Bitmap> {
                     bitmap = combineImages(bitmap, Bitmap.createBitmap(pixels, 2080, pixels.length / 2080, Bitmap.Config.ARGB_8888));
                 }
             }
-            publishProgress("done");
+            publishProgress("done", "100");
 
 
         } catch (IOException | NullPointerException | IllegalArgumentException e) {
